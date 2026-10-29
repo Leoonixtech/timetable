@@ -1,2 +1,2 @@
-## timetable in a page.
+## timetable in a page
 Build with Gemini argon 4
