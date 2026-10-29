@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="pl" class="antialiased">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Plan lekcji" />
+  <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+  <title>Plan lekcji</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: [
+              '-apple-system',
+              'BlinkMacSystemFont',
+              '"SF Pro Text"',
+              '"SF Pro Display"',
+              '"Helvetica Neue"',
+              'Inter',
+              'sans-serif'
+            ]
+          },
+          colors: {
+            ios: {
+              bgLight: '#F2F2F7',
+              cardLight: '#FFFFFF',
+              bgDark: '#000000',
+              cardDark: '#1C1C1E',
+              cardDarkElevated: '#2C2C2E',
+              blue: '#007AFF',
+              blueDark: '#0A84FF',
+              gray: '#8E8E93',
+              separatorLight: 'rgba(60, 60, 67, 0.12)',
+              separatorDark: 'rgba(84, 84, 88, 0.45)'
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Obsługa Safe Area na iPhone'ach z notchem i Dynamic Island */
+    :root {
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+    }
+
+    body {
+      padding-top: calc(var(--safe-top) + 0.5rem);
+      padding-bottom: calc(var(--safe-bottom) + 5.5rem);
+      padding-left: var(--safe-left);
+      padding-right: var(--safe-right);
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Efekt rozmycia w stylu iOS */
+    .ios-blur {
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+    }
+
+    /* Ukrycie pasków przewijania przy zachowaniu płynnego scrolla */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Delikatna animacja przejścia widoku */
+    @keyframes fadeSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-view {
+      animation: fadeSlideUp 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+
+    /* Pulsowanie aktywnej kropki */
+    @keyframes softPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.35); opacity: 0.65; }
+    }
+    .live-dot {
+      animation: softPulse 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+
+<body class="bg-ios-bgLight dark:bg-ios-bgDark text-zinc-900 dark:text-zinc-100 min-h-screen transition-colors duration-200">
+
+  <!-- Główny kontener zoptymalizowany pod szerokość iPhone'a -->
+  <div class="max-w-md mx-auto px-4">
+
+    <!-- Nagłówek w stylu iOS -->
+    <header class="pt-2 pb-3 flex items-center justify-between">
+      <div>
+        <p id="currentDateLabel" class="text-xs font-semibold uppercase tracking-wider text-ios-gray">
+          Klasa 8
+        </p>
+        <h1 class="text-3xl font-bold tracking-tight text-zinc-900 dark:text-white leading-tight">
+          Plan lekcji
+        </h1>
+      </div>
+
+      <!-- Przyciski akcji w nagłówku: Puste lekcje + Motyw -->
+      <div class="flex items-center gap-2">
+        <!-- Przełącznik pustych lekcji 1-8 -->
+        <button
+          id="emptyLessonsToggleBtn"
+          type="button"
+          aria-label="Pokaż lub ukryj wolne lekcje"
+          title="Pokaż pełną siatkę 1–8"
+          class="h-10 px-3 rounded-full bg-white dark:bg-ios-cardDark border border-black/5 dark:border-white/10 shadow-sm flex items-center gap-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 active:scale-95 transition-all"
+        >
+          <span id="emptyToggleDot" class="w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-600 transition-colors"></span>
+          <span>1–8</span>
+        </button>
+
+        <!-- Przełącznik motywu Jasny / Ciemny -->
+        <button
+          id="themeToggleBtn"
+          type="button"
+          aria-label="Zmień motyw jasny/ciemny"
+          class="w-10 h-10 rounded-full bg-white dark:bg-ios-cardDark border border-black/5 dark:border-white/10 shadow-sm flex items-center justify-center text-zinc-700 dark:text-zinc-200 active:scale-95 transition-all"
+        >
+          <!-- Ikona słońca (widoczna w dark mode) -->
+          <svg id="sunIcon" class="w-5 h-5 hidden text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1.5M12 19.5V21M4.22 4.22l1.06 1.06M18.72 18.72l1.06 1.06M3 12h1.5M19.5 12H21M4.22 19.78l1.06-1.06M18.72 5.28l1.06-1.06M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <!-- Ikona księżyca (widoczna w light mode) -->
+          <svg id="moonIcon" class="w-5 h-5 text-zinc-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Karta Statusu Na Żywo (Live Activity style) -->
+    <section id="liveStatusContainer" class="mb-4">
+      <!-- Wypełniane dynamicznie przez JS -->
+    </section>
+
+    <!-- Segmented Control - Wybór dnia tygodnia (Pon - Pt) -->
+    <nav id="daySelectorContainer" aria-label="Wybór dnia tygodnia" class="mb-4">
+      <div class="bg-zinc-200/80 dark:bg-ios-cardDark p-1 rounded-2xl grid grid-cols-5 gap-1">
+        <button data-day="1" class="day-btn py-2 rounded-xl text-xs font-semibold transition-all duration-150 flex flex-col items-center justify-center">
+          <span>Pon</span>
+          <span class="day-dot w-1 h-1 rounded-full mt-0.5 opacity-0"></span>
+        </button>
+        <button data-day="2" class="day-btn py-2 rounded-xl text-xs font-semibold transition-all duration-150 flex flex-col items-center justify-center">
+          <span>Wt</span>
+          <span class="day-dot w-1 h-1 rounded-full mt-0.5 opacity-0"></span>
+        </button>
+        <button data-day="3" class="day-btn py-2 rounded-xl text-xs font-semibold transition-all duration-150 flex flex-col items-center justify-center">
+          <span>Śr</span>
+          <span class="day-dot w-1 h-1 rounded-full mt-0.5 opacity-0"></span>
+        </button>
+        <button data-day="4" class="day-btn py-2 rounded-xl text-xs font-semibold transition-all duration-150 flex flex-col items-center justify-center">
+          <span>Czw</span>
+          <span class="day-dot w-1 h-1 rounded-full mt-0.5 opacity-0"></span>
+        </button>
+        <button data-day="5" class="day-btn py-2 rounded-xl text-xs font-semibold transition-all duration-150 flex flex-col items-center justify-center">
+          <span>Pt</span>
+          <span class="day-dot w-1 h-1 rounded-full mt-0.5 opacity-0"></span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Podsumowanie wybranego dnia (liczba lekcji i przedział godzinowy) -->
+    <div id="daySummaryBar" class="mb-3 flex items-center justify-between px-1">
+      <!-- Wypełniane przez JS -->
+    </div>
+
+    <!-- Główny obszar widoku (Dzień / Tydzień / Dzwonki) -->
+    <main id="mainContent" class="space-y-2.5">
+      <!-- Wypełniane przez JS -->
+    </main>
+
+  </div>
+
+  <!-- Dolny pasek nawigacji w stylu iOS Tab Bar -->
+  <nav
+    aria-label="Widoki planu"
+    class="fixed bottom-0 inset-x-0 z-30 bg-white/85 dark:bg-ios-cardDark/85 ios-blur border-t border-black/10 dark:border-white/10"
+    style="padding-bottom: var(--safe-bottom);"
+  >
+    <div class="max-w-md mx-auto px-6 h-14 grid grid-cols-3 items-center">
+      <!-- Zakładka: Dzień -->
+      <button
+        data-tab="day"
+        class="tab-btn flex flex-col items-center justify-center gap-0.5 py-1 text-ios-blue dark:text-ios-blueDark transition-colors"
+      >
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="3" stroke-linecap="round" stroke-linejoin="round" />
+          <path stroke-linecap="round" stroke-linejoin="round" d="M16 2v4M8 2v4M3 10h18" />
+        </svg>
+        <span class="text-[11px] font-medium">Dzień</span>
+      </button>
+
+      <!-- Zakładka: Tydzień -->
+      <button
+        data-tab="week"
+        class="tab-btn flex flex-col items-center justify-center gap-0.5 py-1 text-ios-gray transition-colors"
+      >
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+        <span class="text-[11px] font-medium">Tydzień</span>
+      </button>
+
+      <!-- Zakładka: Dzwonki -->
+      <button
+        data-tab="bells"
+        class="tab-btn flex flex-col items-center justify-center gap-0.5 py-1 text-ios-gray transition-colors"
+      >
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+        </svg>
+        <span class="text-[11px] font-medium">Dzwonki</span>
+      </button>
+    </div>
+  </nav>
+
+  <script>
+    /*************************************************************************
+     * DANE PLANU LEKCJI (KLASA 8)
+     *************************************************************************/
+    const BELLS = [
+      { num: 1, start: '08:10', end: '08:55', breakAfter: 10 },
+      { num: 2, start: '09:05', end: '09:50', breakAfter: 15 },
+      { num: 3, start: '10:05', end: '10:50', breakAfter: 10 },
+      { num: 4, start: '11:00', end: '11:45', breakAfter: 25, isLongBreak: true },
+      { num: 5, start: '12:10', end: '12:55', breakAfter: 10 },
+      { num: 6, start: '13:05', end: '13:50', breakAfter: 10 },
+      { num: 7, start: '14:00', end: '14:45', breakAfter: 5 },
+      { num: 8, start: '14:50', end: '15:35', breakAfter: 0 }
+    ];
+
+    const DAYS_INFO = {
+      1: { short: 'Pon', full: 'Poniedziałek' },
+      2: { short: 'Wt',  full: 'Wtorek' },
+      3: { short: 'Śr',  full: 'Środa' },
+      4: { short: 'Czw', full: 'Czwartek' },
+      5: { short: 'Pt',  full: 'Piątek' }
+    };
+
+    // Kolory akcentów dla poszczególnych przedmiotów
+    const SUBJECT_STYLES = {
+      'Matematyka':         { color: 'bg-blue-500',    badge: 'bg-blue-500/10 text-blue-600 dark:bg-blue-400/15 dark:text-blue-300', icon: '📐' },
+      'Język polski':       { color: 'bg-rose-500',    badge: 'bg-rose-500/10 text-rose-600 dark:bg-rose-400/15 dark:text-rose-300', icon: '📚' },
+      'Język angielski':    { color: 'bg-indigo-500',  badge: 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-400/15 dark:text-indigo-300', icon: '🇬🇧' },
+      'Biologia':           { color: 'bg-emerald-500', badge: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/15 dark:text-emerald-300', icon: '🌿' },
+      'Geografia':          { color: 'bg-teal-500',    badge: 'bg-teal-500/10 text-teal-600 dark:bg-teal-400/15 dark:text-teal-300', icon: '🌍' },
+      'Historia / WOS':     { color: 'bg-amber-500',   badge: 'bg-amber-500/10 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300', icon: '🏛️' },
+      'Chemia':             { color: 'bg-purple-500',  badge: 'bg-purple-500/10 text-purple-600 dark:bg-purple-400/15 dark:text-purple-300', icon: '🧪' },
+      'Fizyka':             { color: 'bg-cyan-500',    badge: 'bg-cyan-500/10 text-cyan-700 dark:bg-cyan-400/15 dark:text-cyan-300', icon: '⚡' },
+      'Informatyka':        { color: 'bg-sky-500',     badge: 'bg-sky-500/10 text-sky-600 dark:bg-sky-400/15 dark:text-sky-300', icon: '💻' },
+      'EDB':                { color: 'bg-orange-500',  badge: 'bg-orange-500/10 text-orange-600 dark:bg-orange-400/15 dark:text-orange-300', icon: '🛟' },
+      'Edukacja zdrowotna': { color: 'bg-lime-500',    badge: 'bg-lime-500/10 text-lime-700 dark:bg-lime-400/15 dark:text-lime-300', icon: '🍏' },
+      'Rewalidacja':        { color: 'bg-violet-500',  badge: 'bg-violet-500/10 text-violet-600 dark:bg-violet-400/15 dark:text-violet-300', icon: '✨' },
+      'WF':                 { color: 'bg-green-500',   badge: 'bg-green-500/10 text-green-600 dark:bg-green-400/15 dark:text-green-300', icon: '🏃' }
+    };
+
+    // Rozkład zajęć w poszczególne dni tygodnia (1 = Poniedziałek ... 5 = Piątek)
+    const SCHEDULE = {
+      1: {
+        3: { subject: 'Biologia', room: '3' },
+        4: { subject: 'Matematyka', room: '10' },
+        5: { subject: 'Język polski', room: '10' }
+      },
+      2: {
+        4: { subject: 'Język polski', room: '7', note: 'od 11:15', customStart: '11:15' },
+        5: { subject: 'Język polski', room: '7' },
+        6: { subject: 'Matematyka', room: '7' },
+        7: { subject: 'Rewalidacja', room: '7' }
+      },
+      3: {
+        4: { subject: 'Historia / WOS', room: '10' },
+        5: { subject: 'Chemia', room: '10' },
+        6: { subject: 'Fizyka', room: '10' },
+        7: { subject: 'Informatyka', room: '7' }
+      },
+      4: {
+        3: { subject: 'Język angielski', room: 'SI' },
+        4: { subject: 'Język angielski', room: 'SI', note: 'do 11:20', customEnd: '11:20' },
+        5: { subject: 'Geografia', room: '5' }
+      },
+      5: {
+        2: { subject: 'EDB', room: '10' },
+        3: { subject: 'Edukacja zdrowotna', room: '10' },
+        4: { subject: 'Matematyka', room: '—' },
+        5: { subject: 'Rewalidacja', room: 'g.ps' },
+        6: { subject: 'WF', room: '—' },
+        7: { subject: 'WF', room: '—' }
+      }
+    };
+
+    /*************************************************************************
+     * STAN APLIKACJI
+     *************************************************************************/
+    const state = {
+      selectedDay: getInitialDay(),
+      activeTab: 'day', // 'day' | 'week' | 'bells'
+      showEmptySlots: localStorage.getItem('plan_show_empty') === 'true'
+    };
+
+    function getInitialDay() {
+      const today = new Date().getDay(); // 0 = Nd, 1 = Pon, ..., 6 = Sob
+      if (today >= 1 && today <= 5) return today;
+      return 1; // W weekend domyślnie pokazujemy Poniedziałek
+    }
+
+    function timeToMinutes(timeStr) {
+      const [h, m] = timeStr.split(':').map(Number);
+      return h * 60 + m;
+    }
+
+    /*************************************************************************
+     * OBSŁUGA MOTYWU (JASNY / CIEMNY)
+     *************************************************************************/
+    function initTheme() {
+      const savedTheme = localStorage.getItem('plan_theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isDark = savedTheme ? savedTheme === 'dark' : prefersDark;
+
+      applyTheme(isDark);
+    }
+
+    function applyTheme(isDark) {
+      const root = document.documentElement;
+      const sunIcon = document.getElementById('sunIcon');
+      const moonIcon = document.getElementById('moonIcon');
+
+      if (isDark) {
+        root.classList.add('dark');
+        sunIcon.classList.remove('hidden');
+        moonIcon.classList.add('hidden');
+      } else {
+        root.classList.remove('dark');
+        sunIcon.classList.add('hidden');
+        moonIcon.classList.remove('hidden');
+      }
+    }
+
+    document.getElementById('themeToggleBtn').addEventListener('click', () => {
+      const isCurrentlyDark = document.documentElement.classList.contains('dark');
+      const nextDark = !isCurrentlyDark;
+      localStorage.setItem('plan_theme', nextDark ? 'dark' : 'light');
+      applyTheme(nextDark);
+    });
+
+    /*************************************************************************
+     * PRZEŁĄCZNIK PUSTYCH LEKCJI (1–8)
+     *************************************************************************/
+    function updateEmptyToggleUI() {
+      const btn = document.getElementById('emptyLessonsToggleBtn');
+      const dot = document.getElementById('emptyToggleDot');
+
+      if (state.showEmptySlots) {
+        dot.className = 'w-2 h-2 rounded-full bg-ios-blue dark:bg-ios-blueDark transition-colors';
+        btn.classList.add('ring-1', 'ring-ios-blue/40', 'dark:ring-ios-blueDark/40');
+      } else {
+        dot.className = 'w-2 h-2 rounded-full bg-zinc-300 dark:bg-zinc-600 transition-colors';
+        btn.classList.remove('ring-1', 'ring-ios-blue/40', 'dark:ring-ios-blueDark/40');
+      }
+    }
+
+    document.getElementById('emptyLessonsToggleBtn').addEventListener('click', () => {
+      state.showEmptySlots = !state.showEmptySlots;
+      localStorage.setItem('plan_show_empty', String(state.showEmptySlots));
+      updateEmptyToggleUI();
+      renderMainContent();
+    });
+
+    /*************************************************************************
+     * WSKAŹNIK AKTUALNEJ / NASTĘPNEJ LEKCJI NA ŻYWO
+     *************************************************************************/
+    function getLiveStatus() {
+      const now = new Date();
+      const day = now.getDay(); // 0-6
+      const nowMins = now.getHours() * 60 + now.getMinutes();
+
+      // Jeśli weekend
+      if (day === 0 || day === 6) {
+        return {
+          type: 'weekend',
+          title: 'Weekend',
+          subtitle: 'Brak zajęć w dzisiejszym dniu • odpocznij!',
+          badge: 'Wolne'
+        };
+      }
+
+      const daySchedule = SCHEDULE[day] || {};
+      const activeNums = Object.keys(daySchedule).map(Number).sort((a, b) => a - b);
+
+      if (activeNums.length === 0) {
+        return {
+          type: 'free',
+          title: 'Brak lekcji',
+          subtitle: 'Dziś nie ma żadnych zaplanowanych zajęć',
+          badge: 'Wolne'
+        };
+      }
+
+      // Budujemy listę dzisiejszych rzeczywistych lekcji z godzinami
+      const lessonsToday = activeNums.map(num => {
+        const bell = BELLS.find(b => b.num === num);
+        const item = daySchedule[num];
+        const startStr = item.customStart || bell.start;
+        const endStr = item.customEnd || bell.end;
+        return {
+          num,
+          subject: item.subject,
+          room: item.room,
+          note: item.note || null,
+          bellStart: bell.start,
+          bellEnd: bell.end,
+          startMins: timeToMinutes(startStr),
+          endMins: timeToMinutes(endStr),
+          displayStart: startStr,
+          displayEnd: endStr
+        };
+      });
+
+      const firstLesson = lessonsToday[0];
+      const lastLesson = lessonsToday[lessonsToday.length - 1];
+
+      // Przed pierwszą lekcją
+      if (nowMins < firstLesson.startMins) {
+        const diff = firstLesson.startMins - nowMins;
+        const hours = Math.floor(diff / 60);
+        const mins = diff % 60;
+        const timeText = hours > 0 ? `za ${hours} godz. ${mins} min` : `za ${mins} min`;
+
+        return {
+          type: 'before',
+          title: `Pierwsza: ${firstLesson.subject}`,
+          subtitle: `Start o ${firstLesson.displayStart} • Sala ${firstLesson.room}`,
+          badge: timeText
+        };
+      }
+
+      // Po ostatniej lekcji
+      if (nowMins >= lastLesson.endMins) {
+        return {
+          type: 'after',
+          title: 'Koniec lekcji na dziś',
+          subtitle: `Ostatnia lekcja zakończyła się o ${lastLesson.displayEnd}`,
+          badge: 'Po lekcjach'
+        };
+      }
+
+      // Sprawdzamy, czy trwa lekcja lub przerwa pomiędzy nimi
+      for (let i = 0; i < lessonsToday.length; i++) {
+        const current = lessonsToday[i];
+        if (nowMins >= current.startMins && nowMins < current.endMins) {
+          const left = current.endMins - nowMins;
+          const total = current.endMins - current.startMins;
+          const progress = Math.min(100, Math.max(0, Math.round(((nowMins - current.startMins) / total) * 100)));
+          return {
+            type: 'ongoing',
+            lessonNum: current.num,
+            title: current.subject,
+            subtitle: `Lekcja ${current.num} (${current.displayStart}–${current.displayEnd}) • Sala ${current.room}`,
+            badge: `Koniec za ${left} min`,
+            progress
+          };
+        }
+
+        // Jeśli jesteśmy pomiędzy bieżącą a następną lekcją
+        if (i < lessonsToday.length - 1) {
+          const next = lessonsToday[i + 1];
+          if (nowMins >= current.endMins && nowMins < next.startMins) {
+            const left = next.startMins - nowMins;
+            return {
+              type: 'break',
+              nextLessonNum: next.num,
+              title: `Przerwa • Następna: ${next.subject}`,
+              subtitle: `Lekcja ${next.num} od ${next.displayStart} • Sala ${next.room}`,
+              badge: `Dzwonek za ${left} min`
+            };
+          }
+        }
+      }
+
+      return null;
+    }
+
+    function renderLiveStatus() {
+      const container = document.getElementById('liveStatusContainer');
+      const status = getLiveStatus();
+      if (!status) {
+        container.innerHTML = '';
+        return;
+      }
+
+      let dotColor = 'bg-emerald-500';
+      let badgeStyle = 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300';
+
+      if (status.type === 'break' || status.type === 'before') {
+        dotColor = 'bg-amber-500';
+        badgeStyle = 'bg-amber-500/15 text-amber-700 dark:text-amber-300';
+      } else if (status.type === 'after' || status.type === 'weekend') {
+        dotColor = 'bg-zinc-400 dark:bg-zinc-500';
+        badgeStyle = 'bg-zinc-500/15 text-zinc-600 dark:text-zinc-300';
+      }
+
+      container.innerHTML = `
+        <div class="bg-white dark:bg-ios-cardDark rounded-2xl p-3.5 shadow-sm border border-black/5 dark:border-white/10">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-2.5 h-2.5 rounded-full ${dotColor} ${status.type === 'ongoing' || status.type === 'break' ? 'live-dot' : ''} shrink-0"></span>
+              <span class="text-sm font-semibold text-zinc-900 dark:text-white truncate">${status.title}</span>
+            </div>
+            <span class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${badgeStyle} shrink-0">
+              ${status.badge}
+            </span>
+          </div>
+          <p class="text-xs text-ios-gray mt-1 pl-4.5">
+            ${status.subtitle}
+          </p>
+          ${typeof status.progress === 'number' ? `
+            <div class="mt-2.5 w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+              <div class="h-full bg-ios-blue dark:bg-ios-blueDark rounded-full transition-all duration-500" style="width: ${status.progress}%"></div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    /*************************************************************************
+     * NAGŁÓWEK DATY I NAWIGACJA DNI TYGODNIA
+     *************************************************************************/
+    function updateHeaderDate() {
+      const now = new Date();
+      const formatted = now.toLocaleDateString('pl-PL', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long'
+      });
+      const label = document.getElementById('currentDateLabel');
+      label.textContent = `Klasa 8 • ${formatted}`;
+    }
+
+    function updateDaySelectorUI() {
+      const today = new Date().getDay();
+      const buttons = document.querySelectorAll('.day-btn');
+
+      buttons.forEach(btn => {
+        const dayNum = Number(btn.getAttribute('data-day'));
+        const dot = btn.querySelector('.day-dot');
+        const isSelected = dayNum === state.selectedDay;
+        const isToday = dayNum === today;
+
+        if (isSelected) {
+          btn.className = 'day-btn py-2 rounded-xl text-xs font-semibold transition-all duration-150 flex flex-col items-center justify-center bg-white dark:bg-ios-cardDarkElevated text-zinc-900 dark:text-white shadow-sm';
+        } else {
+          btn.className = 'day-btn py-2 rounded-xl text-xs font-semibold transition-all duration-150 flex flex-col items-center justify-center text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white';
+        }
+
+        if (isToday) {
+          dot.className = `day-dot w-1 h-1 rounded-full mt-0.5 ${isSelected ? 'bg-ios-blue dark:bg-ios-blueDark' : 'bg-ios-gray'} opacity-100`;
+        } else {
+          dot.className = 'day-dot w-1 h-1 rounded-full mt-0.5 opacity-0';
+        }
+      });
+    }
+
+    function updateTabBarUI() {
+      const tabs = document.querySelectorAll('.tab-btn');
+      tabs.forEach(tab => {
+        const tabName = tab.getAttribute('data-tab');
+        if (tabName === state.activeTab) {
+          tab.classList.remove('text-ios-gray');
+          tab.classList.add('text-ios-blue', 'dark:text-ios-blueDark');
+        } else {
+          tab.classList.add('text-ios-gray');
+          tab.classList.remove('text-ios-blue', 'dark:text-ios-blueDark');
+        }
+      });
+
+      const daySelector = document.getElementById('daySelectorContainer');
+      const daySummary = document.getElementById('daySummaryBar');
+      const emptyBtn = document.getElementById('emptyLessonsToggleBtn');
+
+      if (state.activeTab === 'day') {
+        daySelector.classList.remove('hidden');
+        daySummary.classList.remove('hidden');
+        emptyBtn.classList.remove('hidden');
+      } else if (state.activeTab === 'week') {
+        daySelector.classList.add('hidden');
+        daySummary.classList.add('hidden');
+        emptyBtn.classList.remove('hidden');
+      } else {
+        daySelector.classList.add('hidden');
+        daySummary.classList.add('hidden');
+        emptyBtn.classList.add('hidden');
+      }
+    }
+
+    /*************************************************************************
+     * RENDEROWANIE WIDOKU: POJEDYNCZY DZIEŃ
+     *************************************************************************/
+    function getDaySummary(dayNum) {
+      const dayData = SCHEDULE[dayNum] || {};
+      const nums = Object.keys(dayData).map(Number).sort((a, b) => a - b);
+      if (nums.length === 0) return { count: 0, range: 'Brak zajęć' };
+
+      const firstNum = nums[0];
+      const lastNum = nums[nums.length - 1];
+      const firstBell = BELLS.find(b => b.num === firstNum);
+      const lastBell = BELLS.find(b => b.num === lastNum);
+
+      const startStr = dayData[firstNum].customStart || firstBell.start;
+      const endStr = dayData[lastNum].customEnd || lastBell.end;
+
+      const count = nums.length;
+      let word = 'lekcji';
+      if (count === 1) word = 'lekcja';
+      else if (count >= 2 && count <= 4) word = 'lekcje';
+
+      return {
+        count,
+        label: `${count} ${word}`,
+        range: `${startStr} – ${endStr}`
+      };
+    }
+
+    function renderDayView() {
+      const dayNum = state.selectedDay;
+      const dayData = SCHEDULE[dayNum] || {};
+      const summary = getDaySummary(dayNum);
+      const today = new Date().getDay();
+      const liveStatus = getLiveStatus();
+
+      // Pasek podsumowania dnia
+      const summaryBar = document.getElementById('daySummaryBar');
+      summaryBar.innerHTML = `
+        <div class="flex items-center gap-2">
+          <h2 class="text-base font-bold text-zinc-900 dark:text-white">
+            ${DAYS_INFO[dayNum].full}
+          </h2>
+          ${dayNum === today ? `<span class="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-ios-blue/15 text-ios-blue dark:text-ios-blueDark">Dzisiaj</span>` : ''}
+        </div>
+        <div class="text-xs font-medium text-ios-gray">
+          ${summary.label} • <span class="text-zinc-700 dark:text-zinc-300 font-semibold">${summary.range}</span>
+        </div>
+      `;
+
+      // Lista lekcji
+      const main = document.getElementById('mainContent');
+      const cardsHtml = [];
+
+      const slotsToRender = state.showEmptySlots
+        ? BELLS.map(b => b.num)
+        : Object.keys(dayData).map(Number).sort((a, b) => a - b);
+
+      slotsToRender.forEach((num, idx) => {
+        const bell = BELLS.find(b => b.num === num);
+        const lesson = dayData[num];
+        const isCurrentOngoing = (dayNum === today && liveStatus && liveStatus.type === 'ongoing' && liveStatus.lessonNum === num);
+
+        if (!lesson) {
+          // Pusta lekcja (okienko / wolna godzina)
+          cardsHtml.push(`
+            <div class="rounded-2xl px-4 py-3 bg-white/50 dark:bg-ios-cardDark/40 border border-dashed border-zinc-300/80 dark:border-zinc-800 flex items-center justify-between opacity-65">
+              <div class="flex items-center gap-3.5">
+                <span class="w-7 h-7 rounded-lg bg-zinc-200/70 dark:bg-zinc-800 text-xs font-bold text-ios-gray flex items-center justify-center">
+                  ${num}
+                </span>
+                <div>
+                  <p class="text-xs font-medium text-ios-gray">Wolna lekcja</p>
+                  <p class="text-[11px] text-zinc-400 dark:text-zinc-500">${bell.start} – ${bell.end}</p>
+                </div>
+              </div>
+              <span class="text-[11px] font-medium text-zinc-400 dark:text-zinc-600">—</span>
+            </div>
+          `);
+        } else {
+          const style = SUBJECT_STYLES[lesson.subject] || {
+            color: 'bg-ios-blue',
+            badge: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
+            icon: '📘'
+          };
+
+          const activeRing = isCurrentOngoing
+            ? 'ring-2 ring-ios-blue dark:ring-ios-blueDark shadow-md'
+            : 'border border-black/5 dark:border-white/10 shadow-sm';
+
+          cardsHtml.push(`
+            <div class="bg-white dark:bg-ios-cardDark rounded-2xl p-4 ${activeRing} relative overflow-hidden transition-all">
+              <!-- Pasek koloru przedmiotu z lewej strony -->
+              <div class="absolute left-0 top-0 bottom-0 w-1.5 ${style.color}"></div>
+
+              <div class="flex items-center justify-between gap-3 pl-1.5">
+                <!-- Lewa kolumna: Numer lekcji, Godziny, Przedmiot -->
+                <div class="flex items-center gap-3.5 min-w-0">
+                  <div class="flex flex-col items-center justify-center w-11 shrink-0 text-center">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-ios-gray">Lekcja ${num}</span>
+                    <span class="text-sm font-bold text-zinc-900 dark:text-white leading-tight mt-0.5">${bell.start}</span>
+                    <span class="text-[11px] font-medium text-ios-gray leading-tight">${bell.end}</span>
+                  </div>
+
+                  <div class="w-px h-9 bg-zinc-200/80 dark:bg-zinc-800 shrink-0"></div>
+
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-base leading-none">${style.icon}</span>
+                      <h3 class="text-base font-bold text-zinc-900 dark:text-white truncate">
+                        ${lesson.subject}
+                      </h3>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                      ${lesson.note ? `
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300">
+                          <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l2.5 1.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          ${lesson.note}
+                        </span>
+                      ` : `
+                        <span class="text-xs text-ios-gray">45 min</span>
+                      `}
+                      ${isCurrentOngoing ? `
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-ios-blue/15 text-ios-blue dark:text-ios-blueDark">
+                          Teraz
+                        </span>
+                      ` : ''}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Prawa kolumna: Sala -->
+                <div class="shrink-0 flex flex-col items-end">
+                  <span class="text-[10px] font-semibold uppercase tracking-wider text-ios-gray mb-0.5">Sala</span>
+                  <span class="px-2.5 py-1 rounded-xl text-xs font-bold ${style.badge}">
+                    ${lesson.room}
+                  </span>
+                </div>
+              </div>
+            </div>
+          `);
+
+          // Dodajemy subtelny wskaźnik przerwy między kolejnymi odbywającymi się lekcjami
+          const nextNumInRender = slotsToRender[idx + 1];
+          if (nextNumInRender === num + 1 && dayData[nextNumInRender] && bell.breakAfter > 0) {
+            const isLong = bell.isLongBreak;
+            cardsHtml.push(`
+              <div class="flex items-center justify-center gap-2 py-0.5">
+                <div class="h-px w-8 bg-zinc-200 dark:bg-zinc-800"></div>
+                <span class="text-[11px] font-medium ${isLong ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-ios-gray'}">
+                  ${bell.breakAfter} min przerwy${isLong ? ' • długa przerwa' : ''}
+                </span>
+                <div class="h-px w-8 bg-zinc-200 dark:bg-zinc-800"></div>
+              </div>
+            `);
+          }
+        }
+      });
+
+      main.innerHTML = `<div class="animate-view space-y-2.5">${cardsHtml.join('')}</div>`;
+    }
+
+    /*************************************************************************
+     * RENDEROWANIE WIDOKU: CAŁY TYDZIEŃ
+     *************************************************************************/
+    function renderWeekView() {
+      const main = document.getElementById('mainContent');
+      const today = new Date().getDay();
+      const blocks = [];
+
+      for (let d = 1; d <= 5; d++) {
+        const dayData = SCHEDULE[d] || {};
+        const summary = getDaySummary(d);
+        const isToday = d === today;
+
+        const slots = state.showEmptySlots
+          ? BELLS.map(b => b.num)
+          : Object.keys(dayData).map(Number).sort((a, b) => a - b);
+
+        const rowsHtml = slots.map(num => {
+          const bell = BELLS.find(b => b.num === num);
+          const lesson = dayData[num];
+
+          if (!lesson) {
+            return `
+              <div class="px-3.5 py-2 flex items-center justify-between text-xs text-zinc-400 dark:text-zinc-600">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-5 text-center font-semibold">${num}.</span>
+                  <span class="w-20 font-mono text-[11px]">${bell.start}–${bell.end}</span>
+                  <span>—</span>
+                </div>
+                <span>—</span>
+              </div>
+            `;
+          }
+
+          const style = SUBJECT_STYLES[lesson.subject] || { color: 'bg-ios-blue', badge: '', icon: '📘' };
+
+          return `
+            <div class="px-3.5 py-2.5 flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2.5 min-w-0">
+                <span class="w-1.5 h-5 rounded-full ${style.color} shrink-0"></span>
+                <span class="w-4 text-xs font-bold text-ios-gray shrink-0">${num}.</span>
+                <span class="text-[11px] font-medium text-ios-gray w-20 shrink-0">${bell.start}–${bell.end}</span>
+                <div class="min-w-0">
+                  <span class="text-xs font-semibold text-zinc-900 dark:text-white truncate block">
+                    ${lesson.subject}
+                  </span>
+                  ${lesson.note ? `<span class="text-[10px] font-semibold text-amber-600 dark:text-amber-400 block">${lesson.note}</span>` : ''}
+                </div>
+              </div>
+              <span class="text-xs font-semibold text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-lg shrink-0">
+                s. ${lesson.room}
+              </span>
+            </div>
+          `;
+        }).join('');
+
+        blocks.push(`
+          <div class="bg-white dark:bg-ios-cardDark rounded-2xl shadow-sm border ${isToday ? 'border-ios-blue/50 dark:border-ios-blueDark/50' : 'border-black/5 dark:border-white/10'} overflow-hidden">
+            <button
+              type="button"
+              onclick="selectDayFromWeek(${d})"
+              class="w-full px-4 py-3 bg-zinc-50/80 dark:bg-white/[0.03] border-b border-black/5 dark:border-white/10 flex items-center justify-between text-left"
+            >
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-bold text-zinc-900 dark:text-white">${DAYS_INFO[d].full}</span>
+                ${isToday ? `<span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-ios-blue/15 text-ios-blue dark:text-ios-blueDark">Dziś</span>` : ''}
+              </div>
+              <span class="text-xs text-ios-gray">${summary.label} (${summary.range})</span>
+            </button>
+            <div class="divide-y divide-black/5 dark:divide-white/5">
+              ${rowsHtml}
+            </div>
+          </div>
+        `);
+      }
+
+      main.innerHTML = `<div class="animate-view space-y-3.5">${blocks.join('')}</div>`;
+    }
+
+    window.selectDayFromWeek = function(dayNum) {
+      state.selectedDay = dayNum;
+      state.activeTab = 'day';
+      updateDaySelectorUI();
+      updateTabBarUI();
+      renderMainContent();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    /*************************************************************************
+     * RENDEROWANIE WIDOKU: ROZPISKA DZWONKÓW I PRZERW
+     *************************************************************************/
+    function renderBellsView() {
+      const main = document.getElementById('mainContent');
+
+      const rows = BELLS.map(bell => {
+        return `
+          <div class="px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="w-7 h-7 rounded-xl bg-ios-blue/10 dark:bg-ios-blueDark/15 text-ios-blue dark:text-ios-blueDark text-xs font-bold flex items-center justify-center">
+                ${bell.num}
+              </span>
+              <div>
+                <p class="text-sm font-bold text-zinc-900 dark:text-white">
+                  ${bell.start} – ${bell.end}
+                </p>
+                <p class="text-[11px] text-ios-gray">Lekcja ${bell.num} (45 min)</p>
+              </div>
+            </div>
+
+            <div class="text-right">
+              ${bell.breakAfter > 0 ? `
+                <span class="inline-flex items-center px-2.5 py-1 rounded-xl text-xs font-semibold ${
+                  bell.isLongBreak
+                    ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300'
+                }">
+                  Przerwa: ${bell.breakAfter} min
+                </span>
+                ${bell.isLongBreak ? `<p class="text-[10px] font-medium text-amber-600 dark:text-amber-400 mt-0.5">Długa przerwa</p>` : ''}
+              ` : `
+                <span class="text-xs font-medium text-ios-gray">Koniec zajęć</span>
+              `}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      main.innerHTML = `
+        <div class="animate-view space-y-3">
+          <div class="px-1">
+            <h2 class="text-base font-bold text-zinc-900 dark:text-white">Godziny lekcyjne i przerwy</h2>
+            <p class="text-xs text-ios-gray">Pełny harmonogram dzwonków (lekcje 1–8)</p>
+          </div>
+          <div class="bg-white dark:bg-ios-cardDark rounded-2xl shadow-sm border border-black/5 dark:border-white/10 divide-y divide-black/5 dark:divide-white/5 overflow-hidden">
+            ${rows}
+          </div>
+        </div>
+      `;
+    }
+
+    /*************************************************************************
+     * GŁÓWNA FUNKCJA RENDERUJĄCA I ZDARZENIA
+     *************************************************************************/
+    function renderMainContent() {
+      if (state.activeTab === 'day') {
+        renderDayView();
+      } else if (state.activeTab === 'week') {
+        renderWeekView();
+      } else if (state.activeTab === 'bells') {
+        renderBellsView();
+      }
+    }
+
+    // Obsługa kliknięć w pasek wyboru dni (Pon - Pt)
+    document.querySelectorAll('.day-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.selectedDay = Number(btn.getAttribute('data-day'));
+        updateDaySelectorUI();
+        renderMainContent();
+      });
+    });
+
+    // Obsługa kliknięć w dolny pasek zakładek (Dzień / Tydzień / Dzwonki)
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.activeTab = btn.getAttribute('data-tab');
+        updateTabBarUI();
+        renderMainContent();
+      });
+    });
+
+    // Obsługa gestów przesunięcia palcem (Swipe Left / Right) w widoku dnia na iPhonie
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    document.addEventListener('touchstart', e => {
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', e => {
+      if (state.activeTab !== 'day') return;
+      const diffX = e.changedTouches[0].screenX - touchStartX;
+      const diffY = e.changedTouches[0].screenY - touchStartY;
+
+      // Reaguj tylko na wyraźny ruch poziomy
+      if (Math.abs(diffX) > 65 && Math.abs(diffX) > Math.abs(diffY) * 1.8) {
+        if (diffX < 0 && state.selectedDay < 5) {
+          state.selectedDay++;
+        } else if (diffX > 0 && state.selectedDay > 1) {
+          state.selectedDay--;
+        } else {
+          return;
+        }
+        updateDaySelectorUI();
+        renderMainContent();
+      }
+    }, { passive: true });
+
+    // Inicjalizacja przy starcie strony
+    window.onload = function() {
+      initTheme();
+      updateHeaderDate();
+      updateEmptyToggleUI();
+      updateDaySelectorUI();
+      updateTabBarUI();
+      renderLiveStatus();
+      renderMainContent();
+
+      // Odświeżanie statusu na żywo co 30 sekund
+      setInterval(() => {
+        updateHeaderDate();
+        renderLiveStatus();
+      }, 30000);
+    };
+  </script>
+</body>
+</html>
