@@ -1,2 +1,1 @@
-## timetable in a page
-Build with Gemini argon 4
+build with Gemini 4 Argon 
